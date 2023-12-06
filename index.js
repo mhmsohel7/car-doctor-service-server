@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const app = express();
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 const port = process.env.PORT || 5000;
 
@@ -27,12 +27,75 @@ async function run() {
 
     //database collection
     const serviceCollection = client.db("carsDoctor").collection("services");
-
+    const bookingCollection = client.db("carsDoctor").collection("booking");
+    //Read Many korbo.
     app.get("/services", async (req, res) => {
       const cursor = serviceCollection.find();
       const result = await cursor.toArray();
       res.send(result);
     });
+
+    //Read Specific Single Data
+    app.get("/services/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+
+      const options = {
+        projection: { title: 1, price: 1, service_id: 1, img: 1 },
+      };
+
+      const result = await serviceCollection.findOne(query, options);
+      res.send(result);
+    });
+
+    //***BOOKINGS COLLECTIONS START***
+    //READ
+    app.get("/bookings", async (req, res) => {
+      let query = {};
+      if (req.query?.email) {
+        query = { email: req.query.email };
+      }
+
+      const result = await bookingCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    //POST
+    app.post("/bookings", async (req, res) => {
+      const booking = req.body;
+      console.log(booking);
+
+      //now backend to database
+      const result = await bookingCollection.insertOne(booking);
+      res.send(result);
+    });
+
+    //DELETE
+    app.delete("/bookings/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+
+      const result = await bookingCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    //UPDATE
+    app.patch("/bookings/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedBooking = req.body;
+      console.log(updatedBooking);
+
+      const updateDoc = {
+        $set: {
+          status: updatedBooking.status,
+        },
+      };
+
+      const result = await bookingCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+    //***BOOKINGS COLLECTIONS END***
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
